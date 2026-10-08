@@ -5,12 +5,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,7 +43,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     containerColor = Color(0xFFE8F5E9)
                 ) { innerPadding ->
-                    Greeting(
+                    // Llamamos a la nueva pantalla en vez de a Greeting
+                    MessageScreen(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -42,24 +54,50 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = Color(0xFFB3E5FC)
+fun MessageScreen(modifier: Modifier = Modifier) {
+    var textInput by remember { mutableStateOf("") }
+    var toDisplay by remember { mutableStateOf("") }
+
+    Column(
+        modifier = modifier.padding(16.dp).fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        TextField(
+            value = textInput,
+            onValueChange = { textInput = it },
+            label = { Text("Escribe tu mensaje") }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = {
+                if (textInput.isNotBlank()) {
+                    toDisplay += textInput + "\n"
+                    textInput = ""
+                }
+            }
         ) {
-            Text(
-                text = "Welcome to Mobile Device Programming!",
-                color = Color(0xFF0D47A1),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic,
-                modifier = Modifier.padding(24.dp)
-            )
+            Text("Añadir texto")
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { toDisplay = "" }
+        ) {
+            Text("Borrar historial")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = toDisplay,
+            modifier = Modifier
+                .height(200.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(8.dp)
+        )
     }
 }
 
@@ -67,6 +105,7 @@ fun Greeting(modifier: Modifier = Modifier) {
 @Composable
 fun GreetingPreview() {
     APP_PDMTheme {
-        Greeting()
+        // En la previsualizacion tambien llamamos a la nueva
+        MessageScreen()
     }
 }
