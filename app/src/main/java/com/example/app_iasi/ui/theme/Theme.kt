@@ -56,3 +56,16 @@ fun App_iasiTheme(
         content = content
     )
 }
+
+@Composable
+fun APP_PDMTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    App_iasiTheme(
+        darkTheme = darkTheme,
+        dynamicColor = dynamicColor,
+        content = content
+    )
+}
