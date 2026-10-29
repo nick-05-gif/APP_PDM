@@ -51,6 +51,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
+    // ViewModel para guardar el historial compartido
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+
     // Librerias de navegacion entre pantallas y serializacion de datos
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

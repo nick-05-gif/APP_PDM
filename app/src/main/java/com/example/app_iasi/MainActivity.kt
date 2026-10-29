@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,19 +26,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.example.app_iasi.ui.theme.APP_PDMTheme
 import kotlinx.serialization.Serializable
 
-// Creamos los identificadores de cada pantalla para la navegacion
 @Serializable
 object Home
 
 @Serializable
-data class Details(val message: String)
+object Details
+
+class MessagesViewModel : ViewModel() {
+    val messages = mutableStateListOf<String>()
+
+    fun addMessage(message: String) {
+        if (message.isNotBlank()) {
+            messages.add(message)
+        }
+    }
+
+    fun clearHistory() {
+        messages.clear()
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,9 +71,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Controlador donde registramos las pantallas y sus transiciones
 @Composable
-fun AppNavigation(modifier: Modifier = Modifier) {
+fun AppNavigation(
+    modifier: Modifier = Modifier,
+    viewModel: MessagesViewModel = viewModel()
+) {
     val navController = rememberNavController()
 
     NavHost(
@@ -64,19 +83,18 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         startDestination = Home,
         modifier = modifier
     ) {
-        // Primera pantalla: formulario
         composable<Home> {
             HomeScreen(
-                onNavigate = { msg ->
-                    navController.navigate(Details(message = msg))
+                onNavigateToDetails = { msg ->
+                    viewModel.addMessage(msg)
+                    navController.navigate(Details)
                 }
             )
         }
-        // Segunda pantalla: detalle del mensaje
-        composable<Details> { backStackEntry ->
-            val details: Details = backStackEntry.toRoute()
+        composable<Details> {
             DetailsScreen(
-                message = details.message,
+                messages = viewModel.messages,
+                onClearHistory = { viewModel.clearHistory() },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -84,7 +102,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun HomeScreen(onNavigate: (String) -> Unit) {
+fun HomeScreen(onNavigateToDetails: (String) -> Unit) {
     var textInput by remember { mutableStateOf("") }
 
     Column(
@@ -94,7 +112,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         TextField(
             value = textInput,
             onValueChange = { textInput = it },
-            label = { Text("Escribe tu mensaje") }
+            label = { Text("Enter your message") }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -102,38 +120,63 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         Button(
             onClick = {
                 if (textInput.isNotBlank()) {
-                    onNavigate(textInput)
-                    textInput = "" // vaciamos para que al volver este limpia
+                    onNavigateToDetails(textInput)
+                    textInput = ""
                 }
             }
         ) {
-            Text("Ver mensaje en nueva pantalla")
+            Text("Send & View History")
         }
     }
 }
 
 @Composable
-fun DetailsScreen(message: String, onBack: () -> Unit) {
+fun DetailsScreen(
+    messages: List<String>,
+    onClearHistory: () -> Unit,
+    onBack: () -> Unit
+) {
     Column(
         modifier = Modifier.padding(16.dp).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Mensaje recibido:",
+            text = "Message History:",
             fontSize = 20.sp,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        Text(
-            text = message,
-            fontSize = 24.sp,
-            color = Color.Blue
-        )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .height(200.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (messages.isEmpty()) {
+                Text(text = "No messages yet", color = Color.Gray)
+            } else {
+                messages.forEach { msg ->
+                    Text(
+                        text = msg,
+                        fontSize = 18.sp,
+                        color = Color.Blue,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+            }
+        }
 
-        // Boton para desapilar la pantalla y regresar
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onClearHistory) {
+            Text("Clear History")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Button(onClick = onBack) {
-            Text("Volver")
+            Text("Back")
         }
     }
 }
