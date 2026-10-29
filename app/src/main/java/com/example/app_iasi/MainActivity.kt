@@ -1,14 +1,17 @@
 package com.example.app_iasi
 
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -19,11 +22,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -64,7 +68,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     containerColor = Color(0xFFE8F5E9)
                 ) { innerPadding ->
-                    AppNavigation(modifier = Modifier.padding(innerPadding))
+                    AdaptiveApp(modifier = Modifier.padding(innerPadding))
                 }
             }
         }
@@ -72,9 +76,59 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation(
+fun AdaptiveApp(
     modifier: Modifier = Modifier,
     viewModel: MessagesViewModel = viewModel()
+) {
+    val configuration = LocalConfiguration.current
+    // rememberSaveable mantiene el texto que se esta escribiendo al girar la pantalla
+    var textInput by rememberSaveable { mutableStateOf("") }
+
+    if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        // En horizontal mostramos entrada e historial en paralelo
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            InputPanel(
+                textInput = textInput,
+                onTextInputChange = { textInput = it },
+                onSend = {
+                    viewModel.addMessage(textInput)
+                    textInput = ""
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            HistoryPanel(
+                messages = viewModel.messages,
+                onClearHistory = { viewModel.clearHistory() },
+                showBackButton = false,
+                onBack = {},
+                modifier = Modifier.weight(1f)
+            )
+        }
+    } else {
+        // En vertical seguimos con la navegacion de 2 pantallas
+        AppNavigation(
+            viewModel = viewModel,
+            textInput = textInput,
+            onTextInputChange = { textInput = it },
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+fun AppNavigation(
+    viewModel: MessagesViewModel,
+    textInput: String,
+    onTextInputChange: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()
 
@@ -85,8 +139,11 @@ fun AppNavigation(
     ) {
         composable<Home> {
             HomeScreen(
-                onNavigateToDetails = { msg ->
-                    viewModel.addMessage(msg)
+                textInput = textInput,
+                onTextInputChange = onTextInputChange,
+                onNavigateToDetails = {
+                    viewModel.addMessage(textInput)
+                    onTextInputChange("")
                     navController.navigate(Details)
                 }
             )
@@ -102,31 +159,22 @@ fun AppNavigation(
 }
 
 @Composable
-fun HomeScreen(onNavigateToDetails: (String) -> Unit) {
-    var textInput by remember { mutableStateOf("") }
-
+fun HomeScreen(
+    textInput: String,
+    onTextInputChange: (String) -> Unit,
+    onNavigateToDetails: () -> Unit
+) {
     Column(
-        modifier = Modifier.padding(16.dp).fillMaxSize(),
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        TextField(
-            value = textInput,
-            onValueChange = { textInput = it },
-            label = { Text("Enter your message") }
+        InputPanel(
+            textInput = textInput,
+            onTextInputChange = onTextInputChange,
+            onSend = onNavigateToDetails
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                if (textInput.isNotBlank()) {
-                    onNavigateToDetails(textInput)
-                    textInput = ""
-                }
-            }
-        ) {
-            Text("Send & View History")
-        }
     }
 }
 
@@ -137,7 +185,61 @@ fun DetailsScreen(
     onBack: () -> Unit
 ) {
     Column(
-        modifier = Modifier.padding(16.dp).fillMaxSize(),
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        HistoryPanel(
+            messages = messages,
+            onClearHistory = onClearHistory,
+            showBackButton = true,
+            onBack = onBack
+        )
+    }
+}
+
+@Composable
+fun InputPanel(
+    textInput: String,
+    onTextInputChange: (String) -> Unit,
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = textInput,
+            onValueChange = onTextInputChange,
+            label = { Text("Enter your message") }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                if (textInput.isNotBlank()) {
+                    onSend()
+                }
+            }
+        ) {
+            Text("Send & View History")
+        }
+    }
+}
+
+@Composable
+fun HistoryPanel(
+    messages: List<String>,
+    onClearHistory: () -> Unit,
+    showBackButton: Boolean,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -148,7 +250,7 @@ fun DetailsScreen(
 
         Column(
             modifier = Modifier
-                .height(200.dp)
+                .height(160.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -167,16 +269,17 @@ fun DetailsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Button(onClick = onClearHistory) {
             Text("Clear History")
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(onClick = onBack) {
-            Text("Back")
+        if (showBackButton) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onBack) {
+                Text("Back")
+            }
         }
     }
 }
